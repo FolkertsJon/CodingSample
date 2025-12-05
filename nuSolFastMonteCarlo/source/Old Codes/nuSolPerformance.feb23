@@ -1,0 +1,492 @@
+/*
+  This is a first pass at a program designed to perform a monte carlo
+  simulation of the nuSol space probe's performance. The first 
+  version is mean to be minimally functional, and will include wildly 
+  inaccurate models.
+
+  We generate a random number in [0,1]. The simulation will begin 
+  stepping through the flight path until the probability of seeing a 
+  neutrino event exceeds this random number. We will take this event 
+  and give it energy and direction. Then we will smear these values 
+  to represent our uncertainties. We apply an effeciency module and 
+  then write this event to a ROOT tree. This continues until the 
+  detector reaches the end of the flight path.
+
+
+  Version history (Should ahve been doing this more)
+  - Jan 19: Exits
+  Jan 19 2021 : Removed /steradian from the neutrino rates. (units in graph 
+                they were taken from did not have them. Oops)
+  Feb 2       : Removing code into sub-files: kUnits,
+  Feb 4       : sub-files: quadFit (does the elliptical or file quadratic 
+                fitting)
+  May 11      : Program now can interpolate non-linear positions; this is 
+                held in a large double array, which might be problmatic.
+		The loops don't seem to be working properly. The neutrino
+		counts don't get looped more than once by appearance
+
+  
+ */
+
+//#include<random>
+#include <math.h>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <iterator>
+#include <vector>
+
+#include <TROOT.h>
+#include <TFile.h>
+#include <TTree.h>
+#include <TNtuple.h>
+#include <TH1D.h>
+#include <TRandom.h>
+#include "kUnits.hh"
+#include "quadFit.hh"
+#include "galliumInteraction.hh"
+#include "backgrounds.hh"
+#include "interp.hh"
+#include "variableParser.hh"
+#include "trajectoryToCoords.hh"
+using namespace std;
+
+
+// This is the main program
+
+
+// too easy to make a data race in this code
+//int nThreads = 12;
+//double deltaTimeLimit = timeLimit/nThreads;
+
+
+int main(int argc, char * argv[]){
+  /*
+my_class mc;
+  mc.do_something();
+  */
+  // These are values that the main program manipulates
+ gRandom -> SetSeed(0);
+  bool isNeutrino, isCosmic, isSolar, isRadio = false; 
+  string nameOfOutfile = "outfile.root";
+
+
+  // Control Variables!
+  User::Par *variables = new User::Par; // holds control variables details in variableParser.hh
+  // parse arguments
+  User::argumentInterpreter(argc, argv, variables);
+  // Check
+  //std::cout << "The number of loops defaults to 100 and is actually " << variables->nLoops << ".\n";
+  //std::cout << "The name of the file I'm supposed to open is " << std::string(variables->myFile) << '\n';
+  std::cout << "The closest approach is: " << variables->closest/kUnits::solarRadii << " solar radii.\n";
+  std::cout << "The furthest approach is: " << variables->furthest/kUnits::solarRadii << " solar radii.\n";
+  std::cout << "The number of kilograms I'm simulating is: " << variables->kgGallium;
+  std::cout << "\nThe gallium atom number I'm simulating is: " << variables->galliumAtomNumber;
+  std::cout << "\nThe time step is: " << variables->timeStep;
+  std::cin.ignore();
+  
+  /*
+  TH1D* neutrinoRadiusHistogram = new TH1D("neutrinoRadiusHistogram","Neutrino Event Radius",150,3,220);// should always be larger than 0, this program should never have to deal with R>~1.1AU~=230 Rsun
+  TH1D* sub35NeutrinoRadiusHistogram = new TH1D("sub35NeutrinoRadiusHistogram","Neutrino Event Radius",150,3,38);// should always be larger than 0, this program should never have to deal with R>~1.1AU~=230 Rsun
+
+  TH1D* neutrinoOnlyRadiusHistogram = new TH1D("neutrinoOnlyRadiusHistogram","Neutrino Only Event Radius",150,3,220);// should always be larger than 0, this program should never have to deal with R>~1.1AU~=230 Rsun
+  TH1D* sub35NeutrinoOnlyRadiusHistogram = new TH1D("sub35NeutrinoOnlyRadiusHistogram","Neutrino Only Event Radius",150,3,38);// should always be larger than 0, this program should never have to deal with R>~1.1AU~=230 Rsun
+  
+  TH1D* cosmicBackRadiusHistogram = new TH1D("cosmicBackRadiusHistogram","Cosmic Background Event Radius",150,3,220);// should always be larger than 0, this program should never have to deal with R>~1.1AU~=230 Rsun
+  TH1D* sub35CosmicBackRadiusHistogram = new TH1D("sub35CosmicBackRadiusHistogram","Cosmic Background Event Radius",150,3,38);// should always be larger than 0, this program should never have to deal with R>~1.1AU~=230 Rsun
+
+  TH1D* solarBackRadiusHistogram = new TH1D("solarBackRadiusHistogram","Solar Background Event Radius",150,3,220);// should always be larger than 0, this program should never have to deal with R>~1.1AU~=230 Rsun
+  TH1D* sub35SolarBackRadiusHistogram = new TH1D("sub35SolarBackRadiusHistogram","Solar Background Event Radius",150,3,38);// should always be larger than 0, this program should never have to deal with R>~1.1AU~=230 Rsun
+
+  TH1D* radiusHistogram = new TH1D("radiusHistogram","Radius",150,3,220);// always filled no matter what happens
+  */
+ 
+  ///*
+  double a = (variables->closest+variables->furthest)/2;// semi-major axis
+
+  // create outfile name
+  nameOfOutfile = "";
+  nameOfOutfile += std::to_string(variables->nLoops);
+  nameOfOutfile += "Orbits_";
+  nameOfOutfile += std::to_string(variables->kgGallium);
+  nameOfOutfile += "kg_";
+  nameOfOutfile += std::to_string(variables->timeStep/kUnits::sec);
+  nameOfOutfile += "secondTimeStep_";
+  if(variables->fileMode){
+    nameOfOutfile += "FileOrbit";
+  }
+  else{
+    nameOfOutfile += "EllipticalOrbit_Closest=";
+    nameOfOutfile += std::to_string(variables->closest/kUnits::solarRadii);
+  nameOfOutfile += "_Furthest=";
+  nameOfOutfile += std::to_string(variables->furthest/kUnits::solarRadii);
+  }
+  nameOfOutfile += ".root";
+  
+  // This is the outfile
+  const char* nameHolder = nameOfOutfile.c_str();
+  TFile *outfile = TFile::Open(nameHolder,"recreate");
+  
+
+  // These are the histograms we output
+
+  User::HistoDat* theHistogramData = new User::HistoDat; // structure to hold data
+  //User::HistoDat theHistogramData;
+  TNtuple *myTuple = new TNtuple("myTuple","NeutrinoFlightPath","neutrinoRadius:sub35NeutrinoRadius:cosmicBackRadius:sub35CosmicBackRadius:solarBackRadius:sub35SolarBackRadius:radius");
+  //TTree* myTree = new TTree("myTree","hitograms of neutrino simulation data");
+  //myTree -> AutoSave();
+  //myTree -> SetAutoSave(1000000000);
+  //myTree -> Branch("data",(theHistogramData),"neutrinoRadius:sub35NeutrinoRadius:cosmicBackRadius:sub35CosmicBackRadius:solarBackRadius:sub35SolarBackRadius:radius",320000);
+
+  //timeLimit = floor ( ( 2*M_PI*sqrt(a*a*a/( kUnits::G * kUnits::mSun ) ) ) / kUnits::day ) * kUnits::day ;//2*M_PI*sqrt( pow(a,3) / ( kUnits::G*kUnits::mSun ) );
+
+  if(variables->fileMode){
+    double *t = User::trajectoryTot(std::string(variables->myFile));
+    //std::cout << "Was it here?\n";
+    variables->timeLimit = kUnits::day*t[User::number_of_lines(std::string(variables->myFile))-1];//kUnits::hours*User::number_of_lines(variables.myFile);
+    delete t;
+    variables->nSteps = floor(variables->timeLimit/variables->timeStep);
+    std::cout << "The number of steps is: " << variables->nSteps << "\n";
+  }
+  else
+{
+    variables->timeLimit = ( 2*M_PI*sqrt(a*a*a/( kUnits::G * kUnits::mSun ) ) );
+  }
+
+  // Make Constants the right size
+  double* fileConstants = new double[variables->nSteps];
+  double* quadraticConstants;
+  if(variables->fileMode){
+    // Get array size
+    int i = User::number_of_lines(std::string(variables->myFile));
+    
+    //Get Data
+    double *R = new double[i];
+    double *t = new double[i];
+    R = User::trajectoryToR(std::string(variables->myFile));
+    t = User::trajectoryTot(std::string(variables->myFile));
+    cout << "Or here?";
+
+
+    for(int j = 0; j < variables->nSteps; j++){
+      //std::cout << "The absolute first line is a comment in this for loop.\n";
+      // holds the interpolation data
+      double tee[5];
+      double arr[5];
+      
+      // find the index of the time step greater than this
+      int idx = 0;
+      while( j*variables->timeStep/kUnits::day > t[idx]){
+	idx++;
+      }//end While
+      //std::cout << "here. Why? The index is " << idx<< "\n";
+      if(idx < 3 ){ // index is smoll
+	for(int k = 0; k < 5; k++){
+	  tee[k]=t[k];
+	  arr[k]=R[k];
+	}
+      }// end if1
+      else if(idx > (i - 3) ){//index is big
+	int kay = 0;
+	for(int k = variables->nSteps-5; k < variables->nSteps; k++){
+	  tee[kay]=t[k];
+	  arr[kay]=R[k];
+	  kay++;
+	}
+      }//end if2
+      else{
+	int kay = 0;
+	for(int k = idx-2; k < idx+3; k++){
+	  //std::cout << "here. Why? k = "<< k << ". The value of t is " << t[k] << ".\n";
+	  tee[kay]=t[k];
+	  arr[kay]=R[k];
+	  kay++;
+	}
+      }// end else
+
+      //check
+      /*
+	for(int k = 0; k<5; k++){
+	std::cout << "t[" << k << "] is " << tee[k] << " and R[" << k << "] is " << arr[k] << ".\n";
+	}
+      */
+
+
+      //time to interpolate
+      double theValue = j*variables->timeStep/kUnits::day;
+      double interpPoint[1] = {theValue};
+      double *output = new double[1];
+      output = interp_lagrange( 1, 5, tee, arr, 1, interpPoint);
+      fileConstants[j] = output[0];
+      //std::cout << "I'm outputting!\n";
+      
+      
+      if(j%10000 ==0){
+	std::cout << "On fit value " << j << " of " << variables->nSteps << " and the radius is " << output[0] << ".\n";
+      }
+      //std::cout << "The absolute last line is a comment in this for loop.\n";
+    }//end for
+  }//end file mode if
+  else{
+  std::cout << "The closest approach is: " << variables->closest/kUnits::solarRadii << " solar radii.\n";
+  std::cout << "The furthest approach is: " << variables->furthest/kUnits::solarRadii << " solar radii.\n";
+    quadraticConstants = User::elliptical(variables->closest,variables->furthest);
+  }
+  cout << "fitting is done.\n\n";
+  /*for (int i = 0;i<100;i++){
+    double c = quadraticConstants[3*i];//*(quadraticConstants+3*i);
+    double b = quadraticConstants[3*i];// *(quadraticConstants+3*i+1);
+    double a = quadraticConstants[3*i];// *(quadraticConstants+3*i+2);
+    //cout << "Day " << (i+1) << " to " << (i+2) << " has constants:\n";
+    //cout << "c = " << c;
+    //cout << "; b = " << b;
+    //cout << "; a = " << a << ".";
+    //cout << "Ergo the radius on day " << i+1 << " is " << ( (a*(i+1)*(i+1))+(b*(i+1))+c) << ".\n\n";
+    }*/
+  //*/
+
+
+  //TNtuple* nuNtuple = new TNtuple("nuNtuple","something","Solar_Radii:neutrinoCount:cosmicCount:solarCount");
+  double nuAccumulator,cosmicAccumulator,solarAccumulator=0;
+  double nuThresh = (gRandom->Uniform());
+  double cosmicThresh = (gRandom->Uniform());
+  double solarThresh = (gRandom->Uniform());
+  for(int i = 0; i < variables->nLoops; i++ ){
+    double time, radius = 0;
+    time = 0;
+    long long int sanityInt = 0;
+    cout << "\n\nThis is iteration " << i << ".\n";
+    do{
+      //timeLimit = 1;
+      sanityInt += 1;
+      int coutPeriod;
+      coutPeriod = floor((variables->timeLimit)/(4*(variables->timeStep)));
+      bool doCout = (0 == (sanityInt%coutPeriod) );
+      // this is to suppress a NaN issue. This makes the elliptical loops less good, but the
+      // explicit file loops are unaffected
+      
+      //double nuAccumulator,cosmicAccumulator,solarAccumulator=0;
+      
+
+      /* // CSV is slow
+      ofstream sanityCSV;
+      string sanityName = "sanityCheck";
+      sanityName += std::to_string(i);
+      sanityName += ".txt";
+      sanityCSV.open (sanityName, std::ios::app);
+      cout << "The file name is \"" << sanityName << "\".\n";
+      */
+      if(doCout){
+	std::cout << "Before flightPath, time is " << (time/kUnits::days) << " d, radius is " << (radius/kUnits::solarRadii) << " RSol, and inclination is " << variables->inclination <<endl;
+      }
+
+
+      // flightPath(time,radius,inclination);
+      if(variables->fileMode){
+	int thisStep = floor(time/variables->timeStep);
+	radius = fileConstants[thisStep]*kUnits::solarRadii;
+	//std::cout << "This is step " << thisStep << ".\n";
+	//radius = (User::positionHours( time, quadraticConstants, timeLimit ));
+      }
+      else{
+	radius = (User::positionMinutes( time, quadraticConstants, variables->timeLimit ));
+      }
+      if(std::isnan(radius)){
+	radius = 0;// controls a NaN radius
+      }
+      double solarNeutrinoSignal = variables->solarNeutrinoRate*User::linOscFactor(radius)*(1*kUnits::AU/radius)*(1*kUnits::AU/radius);
+      /*
+      cout << "The file name is \"" << sanityName << "\".\n";
+      std::cout << "Before flightPath, time is " << (time/kUnits::days) << " d, radius is " << (radius/kUnits::solarRadii) << " RSol, and inclination is " << inclination <<endl;
+      sanityCSV << "This is step " << sanityInt << ".\n";
+      sanityCSV << radius << ',' << (time/kUnits::hr) << endl ;
+      */ // writing to csv is slow
+      
+      if (radius > 250*kUnits::solarRadii){
+	std::cout << "Before flightPath, time is " << (time/kUnits::days) << " d, radius is " << (radius/kUnits::solarRadii) << " RSol, and inclination is " << variables->inclination <<endl;
+	cout << "Oh no! The radius is " << radius/kUnits::solarRadii << " solar radii, which is much further than Earth. I'm setting it to 500 R_Sol or breaking.\n";
+	radius = 500*kUnits::solarRadii;
+	break;
+      }
+      if (radius < 1*kUnits::solarRadii) {
+	std::cout << "Before flightPath, time is " << (time/kUnits::days) << " d, radius is " << (radius/kUnits::solarRadii) << " RSol, and inclination is " << variables->inclination <<endl;
+	cout << "Well shoot, we're at " << radius << " solar radii, which is inside the sun. (Or negative. That makes even less sense). I'm setting it to 0.5 R_sol or breaking.\n";
+	  radius = 0.5*kUnits::solarRadii;
+	  break;
+      }
+      
+      time = time + variables->timeStep;
+      // std::cout << "After flightPath, time is " << time << " radius is " << radius << ", and inclination is " << inclination <<endl;
+      
+      // The GCR is too big for most timescales directly, but small enough that we don't need it to be
+      // I can take the cosmic accumulator, and make it the nearest integer. Once I have that, I can 
+      // randomly assign events to bins in the timescale range. A simpler approximation would be to just 
+      // assign them to bin 0 through n until I'm out of events. If I do them randomly, then I'll have 
+      // to look at the probability of having two hit at once, and the veto performance of that. For
+      // the time being, I'll probably stick to even bins, and randomly select a bin for the neutrino.
+      bool cosmicBack = true;
+      if(cosmicBack){   
+	double background = User::cosmicBackground(radius,variables->inclination); // checking background
+	double vetoedBack = background * variables->cosmicAcceptance * variables->cosmicAcceptance;
+	double a = variables->timeStep * /*cosmicBackground(radius,1)*/ variables->cosBack * variables->cosmicAcceptance * variables->cosmicAcceptance;//cosmicBackground(radius,1);
+	cosmicAccumulator = cosmicAccumulator + a;
+
+	if(doCout){
+	  cout << "Total cosmic backround is " << background << " events per second.\n";
+	  cout << "Vetoed cosmic backround is " << vetoedBack << " events per second.\n";
+	  std::cout << "The Cosmic Background of " << (radius/kUnits::solarRadii)  << " solarRadii from the center of the sun is : " << a << endl;
+	  std::cout << "The Cosmic Background Signal accumulation is " << cosmicAccumulator  << ". " << endl;
+	}
+
+	isCosmic = cosmicAccumulator>cosmicThresh;
+      }
+      
+      bool solarBack = true;
+      if(solarBack){  
+	//double why = radius;
+	//double nott = inclination;
+	//double thiss = 2*detectorRadius;
+	double background = User::solarBackground( radius, variables->inclination, 2*variables->detectorRadius ); // checking background
+	double vetoedBack = background * variables->solarAcceptance * variables->solarAcceptance;
+	double b = variables->timeStep * User::solarBackground( radius, variables->inclination, 2*variables->detectorRadius )* variables->solarAcceptance * variables->solarAcceptance;
+	solarAccumulator = solarAccumulator + b;
+
+	if(doCout){
+	  cout << "Total solar backround is " << background << " events per second.\n";
+	  cout << "Vetoed solar backround is " << vetoedBack << " events per second.\n";
+	  std::cout << "The Solar Background of " << (radius/kUnits::solarRadii)  << " solarRadii from the center of the sun is : " << b << endl;
+	  std::cout << "The Solar Background Signal accumulation is " << solarAccumulator  << ". " << endl;
+	}
+
+	isSolar = solarAccumulator>solarThresh;
+      }
+      
+      bool neutrinos = true;
+      if(neutrinos){  
+	double c = variables->timeStep*solarNeutrinoSignal;
+	if(std::isnan(c)){
+	  std::cout << "I have somehow made c into NaN. c is just timeStep (" << variables->timeStep 
+		    << ") + (" << solarNeutrinoSignal <<").\n"; // solarNeutrinoSignal is somehow NaN
+	  doCout = true;
+	  //break;
+	}
+	nuAccumulator = nuAccumulator + c;// this creates a data race. I should make a raceless version that is parallel. It may be fast enough to make parallel faster. Each RNG call is ~5ns
+
+	if(doCout){
+	  std::cout << "The signal before time and radius stuff is " << solarNeutrinoSignal << std::endl;
+	  std::cout << "The Neutrino Signal of " << (radius/kUnits::solarRadii)  << " solarRadii from the center of the sun is : " << c << endl;
+	  std::cout << "The Neutrino Signal accumulation is " << nuAccumulator  << ". " << endl;
+	  std::cout<<endl;
+	}
+
+	isNeutrino = nuAccumulator>nuThresh;
+      }
+      
+      // This is the filling loop
+      bool needRad = (i == 0);// only need to see radius once 
+      
+      while(isCosmic || isSolar || isNeutrino || needRad){
+	if(needRad){
+	  theHistogramData -> radius = radius / kUnits::solarRadii;
+	  needRad = false;
+	}
+	else{
+	  theHistogramData -> radius = 0;
+	}
+	
+	if(isCosmic){
+	  // std::cout << "1/1 There is a cosmic event and the radius I'm writing is: " << radius / kUnits::solarRadii << '\n';
+	  theHistogramData -> cosmicBackRadius = radius / kUnits::solarRadii;
+	  if(radius / kUnits::solarRadii < 35){
+	    theHistogramData -> sub35CosmicBackRadius = radius / kUnits::solarRadii;
+	  }
+	  cosmicAccumulator = cosmicAccumulator - cosmicThresh;
+	  cosmicThresh = (gRandom->Uniform());
+	  isCosmic = (cosmicAccumulator > cosmicThresh);
+	  
+	}
+	else{
+	  theHistogramData -> cosmicBackRadius = 0;
+	  theHistogramData -> sub35CosmicBackRadius = 0;
+	}
+      
+
+	if(isSolar){
+	  theHistogramData -> solarBackRadius = radius / kUnits::solarRadii;
+	  if(radius / kUnits::solarRadii < 35){
+	    theHistogramData -> sub35SolarBackRadius = radius / kUnits::solarRadii;
+	  }
+	  solarAccumulator = solarAccumulator - solarThresh;
+	  solarThresh = (gRandom->Uniform());
+	  isSolar = (solarAccumulator > solarThresh);
+	  
+	}
+	else{
+	  theHistogramData -> solarBackRadius = 0;
+	  theHistogramData -> sub35SolarBackRadius = 0;
+	}
+      
+
+	if(isNeutrino){
+	  theHistogramData -> neutrinoRadius = radius / kUnits::solarRadii;
+	  if(radius / kUnits::solarRadii < 35){
+	    theHistogramData -> sub35NeutrinoRadius = radius / kUnits::solarRadii;
+	  }
+	  nuAccumulator = nuAccumulator - nuThresh;
+	  nuThresh = (gRandom->Uniform());
+	  isNeutrino = (nuAccumulator > nuThresh);
+	  
+	}
+	else{
+	  theHistogramData -> neutrinoRadius = 0;
+	  theHistogramData -> sub35NeutrinoRadius = 0;
+	}
+
+
+
+      //radiusHistogram -> Fill( (radius / kUnits::solarRadii) );
+	myTuple ->Fill(theHistogramData -> neutrinoRadius,
+	               theHistogramData -> sub35NeutrinoRadius,
+	               theHistogramData -> cosmicBackRadius,
+		       theHistogramData -> sub35CosmicBackRadius,
+	               theHistogramData -> solarBackRadius,
+                       theHistogramData -> sub35SolarBackRadius,
+	               theHistogramData -> radius);
+	
+	//myTree -> Fill();
+      }
+      //if (radius < 15.5*kUnits::solarRadii) break;
+      /*if(std::isnan(nuAccumulator)||std::isnan(cosmicAccumulator)){
+	break;
+	}*/
+    }
+    while(time<variables->timeLimit);
+  }
+
+  cout << "\n\nThe total orbital period  was " << variables->timeLimit/kUnits::days << " days.\n\n";
+  
+  // print out the NTuple
+  //myTuple->Draw("neutrinoRadius");
+  cout << "I'm writing the histograms now.\n";
+  /*neutrinoRadiusHistogram -> Write();
+  sub35NeutrinoRadiusHistogram -> Write();
+  neutrinoOnlyRadiusHistogram -> Write();
+  sub35NeutrinoOnlyRadiusHistogram -> Write();
+  solarBackRadiusHistogram -> Write();
+  sub35SolarBackRadiusHistogram -> Write();
+  cosmicBackRadiusHistogram -> Write();
+  sub35CosmicBackRadiusHistogram -> Write();
+  radiusHistogram -> Write();
+  */
+  myTuple -> Print();
+  myTuple -> Write();
+  //myTree -> Print();
+  //myTree -> Write();
+  outfile -> Close();
+  
+  
+  
+  return 0;
+}
+
+

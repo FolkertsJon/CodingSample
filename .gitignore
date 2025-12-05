@@ -1,0 +1,23 @@
+# Ignore all files in any directory named "build"
+**/build/
+
+# Ignore all .out files
+*.out
+
+# Ignore all .root files
+*.root
+
+# Ignore all .xml files
+*.xml
+
+# Ignore any folder beginning with "temp"
+temp*/
+
+# Ignore the counted events folder
+countedEvents/
+
+# Ignore all emacs backups
+*~
+
+# Ignore all emacs temporary files
+*#

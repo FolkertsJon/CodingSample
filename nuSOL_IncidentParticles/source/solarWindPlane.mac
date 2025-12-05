@@ -1,0 +1,5 @@
+/gps/pos/type Plane
+/gps/pos/shape Circle
+# just at the edge of the head shield + 1mm
+/gps/pos/centre 0. 0. -742 mm
+/gps/pos/radius 2.1 m

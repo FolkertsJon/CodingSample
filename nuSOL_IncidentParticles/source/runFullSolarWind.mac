@@ -1,0 +1,27 @@
+# Macro file for example nuSolIncidentParticles
+# 
+# Can be run in batch, without graphic
+# or interactively: Idle> /control/execute run1.mac
+#
+# Change the default number of workers (in multi-threading mode) 
+#/run/numberOfThreads 4
+#
+# Initialize kernel
+/run/initialize
+#
+# Solar wind is protons
+#
+/gps/particle proton
+#
+# Set up energy
+#
+/control/execute FullSpectrum.mac
+#
+# Set up angle
+#
+/control/execute SolarAngles.mac
+#
+# Fire ze missiles!
+#
+/run/beamOn 20
+#

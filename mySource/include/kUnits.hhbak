@@ -1,0 +1,147 @@
+/*
+  Jonathan Folkerts Feb 2021
+  This the the file for importing my system of units to the program. I'll be maintiaing this as I
+  try to get nuSolPerformance cleaned up into one program with subfiles.
+
+*/
+
+#ifndef kUnits_H
+#define kUnits_H
+
+namespace kUnits
+{
+  // Length (area, volume) Units.
+  extern const double meter;
+  extern const double m;
+
+  extern const double centimeter;
+  extern const double cm;
+
+  extern const double millimeter;
+  extern const double mm;
+
+  extern const double kilometer;
+  extern const double km;
+
+  extern const double solarRadii;
+
+  extern const double venusSunDistance;
+
+  extern const double mercurySunDistance;
+
+  extern const double AU;
+
+
+
+
+
+  extern const double barn;
+  extern const double b;
+  extern const double barns;
+  
+
+
+
+
+  extern const double cc;
+  extern const double milliliter;
+  extern const double mL;
+
+  extern const double liter;
+  extern const double L;
+
+
+
+  // Time Units
+  extern const double second;
+  extern const double sec;
+  extern const double seconds;
+  extern const double s;
+
+  extern const double millisecond;
+  extern const double milliseconds;
+  extern const double ms;
+
+  extern const double microsecond;
+  extern const double microseconds;
+  extern const double us;
+
+  extern const double nanosecond;
+  extern const double nanoseconds;
+  extern const double ns;
+
+  extern const double minute;
+  extern const double minutes;
+  extern const double min;
+
+  extern const double hour;
+  extern const double hours;
+  extern const double hr;
+
+  extern const double day;
+  extern const double days;
+  extern const double d;
+
+  extern const double week;
+  extern const double weeks;
+  extern const double wk;
+
+  extern const double month;
+  extern const double months;
+
+  extern const double year;
+  extern const double years;
+  extern const double yr;
+
+
+
+  // Mass Units
+  extern const double kg;
+  extern const double kilogram;
+  
+  extern const double mSun; // might want to swap with kg for 1
+
+
+
+  // Energy Units
+  extern const double MeV;
+
+  extern const double keV;
+  
+  extern const double eV;
+  extern const double electronVolt;
+
+  extern const double GeV;
+
+  extern const double Joule;
+  extern const double J;
+
+
+
+  // Angle Units
+  extern const double radian;
+  extern const double rad;
+  extern const double radians;
+
+  extern const double degrees;
+  extern const double degree;
+  extern const double deg;
+
+  extern const double arcminutes;
+  extern const double arcminute;
+  extern const double arcmin;
+
+  extern const double arcseconds;
+  extern const double arcsecond;
+  extern const double arcsec;
+  
+  // Physical Constants
+  extern const double c;
+  extern const double speedOfLight;
+
+  extern const double G; // units are all 1 in this system
+  extern const double newtonGravity; 
+
+}
+
+#endif // kUnits_H

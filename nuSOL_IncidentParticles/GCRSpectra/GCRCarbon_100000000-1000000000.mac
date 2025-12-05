@@ -1,0 +1,12 @@
+# Total flux is 5.91621343e-06 m^-2 sr^-1 s^-1
+/gps/ene/type User
+/gps/hist/type energy
+/gps/hist/point 0 0
+/gps/hist/point 1.00000000e+08 1.50114562e-13
+/gps/hist/point 1.07196578e+08 1.27459232e-13
+/gps/hist/point 1.17916236e+08 9.37129982e-14
+/gps/hist/point 1.29707859e+08 6.58876374e-14
+/gps/hist/point 1.42678645e+08 5.74741546e-14
+/gps/hist/point 1.56946509e+08 4.82193236e-14
+/gps/hist/point 1.72641160e+08 3.80390095e-14
+/gps/hist/point 1.89905276e+08 2.68406639e-14

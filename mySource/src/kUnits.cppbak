@@ -1,0 +1,149 @@
+/*
+  Jonathan Folkerts Feb 2021
+  This the the file for importing my system of units to the program. I'll be maintiaing this as I
+  try to get nuSolPerformance cleaned up into one program with subfiles.
+
+ */
+#include "kUnits.hh"
+#include <math.h>
+
+
+namespace kUnits{
+  // Length (area, volume) Units.
+  const double meter = 1;
+  const double m = meter;
+
+  const double centimeter = meter/100;
+  const double cm = meter/100;
+
+  const double millimeter = meter/1000;
+  const double mm = meter/1000;
+
+  const double kilometer = 1000*meter;
+  const double km = 1000*meter;
+
+  const double solarRadii = 695700*km;
+
+  const double venusSunDistance = 1.075e8*km;
+
+  const double mercurySunDistance = 4.602e7*km;
+
+  const double AU = 149597870700*m;
+
+
+
+
+
+  const double barn = 1e-28*m*m;
+  const double b = barn;
+  const double barns = barn;
+  
+
+
+
+
+  const double cc = cm*cm*cm;
+  const double milliliter = cc;
+  const double mL = cc;
+
+  const double liter = 1000*cc;
+  const double L = liter;
+
+
+
+
+
+
+  // Time Units
+  const double second = 1;
+  const double sec = 1;
+  const double seconds = 1;
+  const double s = 1;
+
+  const double millisecond = s/1000;
+  const double milliseconds = s/1000;
+  const double ms = s/1000;
+
+  const double microsecond = ms/1000;
+  const double microseconds = ms/1000;
+  const double us = ms/1000;
+
+  const double nanosecond = us/1000;
+  const double nanoseconds = us/1000;
+  const double ns = nanosecond;
+
+  const double minute = 60*s;
+  const double minutes = 60*s;
+  const double min = 60*s;
+
+  const double hour = 60*minute;
+  const double hours = 60*minute;
+  const double hr = 60*minute;
+
+  const double day = 24*hr;
+  const double days = 24*hr;
+  const double d = 24*hr;
+
+  const double week = 7*day;
+  const double weeks = week;
+  const double wk = week;
+
+  const double month = 30*day;
+  const double months = month;
+
+  const double year = 365.24219*day;
+  const double years = 365.24219*day;
+  const double yr = 365.24219*day;
+
+
+
+  // Mass Units
+  const double kg = 1;
+  const double kilogram = kg;
+  
+  const double mSun = 1.989e30*kg; // might want to swap with kg for 1
+
+
+
+  // Energy Units
+  const double MeV = 1;
+
+  const double keV = MeV/1;
+  
+  const double eV = keV/1;
+  const double electronVolt = eV;
+
+  const double GeV = 1000*MeV;
+
+  const double Joule = 6.241509e18*eV;
+  const double J = Joule;
+
+
+
+  // Angle Units
+  const double radian = 1;
+  const double rad = radian;
+  const double radians = radian;
+
+  const double degrees = radian/(2*M_PI )*360;
+  const double degree = degrees;
+  const double deg = degrees;
+
+  const double arcminutes = degrees/60;
+  const double arcminute = arcminutes;
+  const double arcmin = arcminutes;
+
+  const double arcseconds = arcminutes/60;
+  const double arcsecond = arcseconds;
+  const double arcsec = arcseconds;
+  
+  // Physical Constants
+  const double c = 299792458*m/s;
+  const double speedOfLight = c;
+
+  const double G = 6.67430e-11; // units are all 1 in this system
+  const double newtonGravity = G; 
+}
+
+
+

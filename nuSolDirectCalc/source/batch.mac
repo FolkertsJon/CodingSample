@@ -1,0 +1,32 @@
+##################################################
+# This is the batch file for nuSolPerformance
+# a "#" deonotes the line is a comment/unused
+# lines cannot be empty
+##################################################
+#
+# File (1) or Elliptical (0) mode
+fileMode 1
+#
+#
+# time step in sec
+timeStep 0.0001
+# 86397 - slightly less than a day so that we get close for year-long runs (at earth)
+#
+# Detector Radius in Meters
+detectorRadius 0.3
+#
+#
+# gallium Mass
+kgGallium 100
+# 173.76 - 400 kg GaGG + 400 kg Tungsten-Gallium-Phosphate
+# 90.27 - 400 kg GaGG 
+# For ellipses
+# Closest approach in solar radii
+closest 3
+# Furthest in solar radii (154.8 = Venus; 81.63 = Mercury)
+furthest 81.63
+#
+#
+#
+# Number of flights to run
+nLoops 1

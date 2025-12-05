@@ -1,0 +1,30 @@
+# Total flux is 9.81841942e+00 m^-2 sr^-1 s^-1
+/gps/ene/type User
+/gps/hist/type energy
+/gps/hist/point 0 0
+/gps/hist/point 1.00000000e+05 1.16548909e-03
+/gps/hist/point 1.01979976e+05 1.14040862e-03
+/gps/hist/point 1.12177973e+05 2.38302189e-05
+/gps/hist/point 1.23395771e+05 1.73083924e-05
+/gps/hist/point 1.35735348e+05 1.48593912e-05
+/gps/hist/point 1.49308882e+05 1.22977891e-05
+/gps/hist/point 1.64239771e+05 9.57529416e-06
+/gps/hist/point 1.80663748e+05 6.70317426e-06
+/gps/hist/point 1.98730123e+05 4.48958678e-06
+/gps/hist/point 2.18603135e+05 3.86760780e-06
+/gps/hist/point 2.40463448e+05 3.22785878e-06
+/gps/hist/point 2.64509793e+05 2.55363443e-06
+/gps/hist/point 2.90960772e+05 1.83488470e-06
+/gps/hist/point 3.20056850e+05 1.33849016e-06
+/gps/hist/point 3.52062535e+05 1.15683909e-06
+/gps/hist/point 3.87268788e+05 9.64808126e-07
+/gps/hist/point 4.25995667e+05 7.49024902e-07
+/gps/hist/point 4.68595233e+05 5.33560336e-07
+/gps/hist/point 5.15454757e+05 4.01905380e-07
+/gps/hist/point 5.67000233e+05 3.44706761e-07
+/gps/hist/point 6.23700256e+05 2.85589824e-07
+/gps/hist/point 6.86070281e+05 2.20795118e-07
+/gps/hist/point 7.54677309e+05 1.53844058e-07
+/gps/hist/point 8.30145040e+05 1.21112069e-07
+/gps/hist/point 9.13159544e+05 1.02642059e-07
+/gps/hist/point 1.00000000e+06 8.44935189e-08

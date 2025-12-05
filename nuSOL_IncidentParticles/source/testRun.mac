@@ -1,0 +1,23 @@
+# Macro file for example nuSolIncidentParticles
+# 
+# Can be run in batch, without graphic
+# or interactively: Idle> /control/execute run1.mac
+#
+# Change the default number of workers (in multi-threading mode) 
+#/run/numberOfThreads 4
+#
+# Initialize kernel
+/run/initialize
+#
+#  tracking/verbose
+#
+#/tracking/verbose 1
+#
+#
+# muon 300 MeV in direction (0.,0.,1.)
+# 10 events
+#
+/gun/particle mu+
+/gun/energy 300 MeV
+/run/beamOn 10
+
